@@ -40,3 +40,4 @@ endif()
 set(SECP256K1_ROOT "/usr/local")
 
 include(UnitTestsExternalProject.txt)
+add_subdirectory(eoslocal)
