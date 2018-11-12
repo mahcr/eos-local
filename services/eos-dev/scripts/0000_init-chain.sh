@@ -1,71 +1,133 @@
 #!/usr/bin/env bash
 
-EOSIO_PRIVATE_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
-EOSIO_PUBLIC_KEY="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+# Throws error when using unset variable
+set -ux
 
-EOSLOCAL_ACCOUNT_PRIVATE_OWNER_KEY="5KacG2v3XYrjmxazgriHVo1updD7PKXJMWzcaQmBMMXE9Y69aW9"
-EOSLOCAL_ACCOUNT_PUBLIC_OWNER_KEY="EOS88bvtAMTwPBQyF8cxFUFXez9zCoebABS3dXngdNphqNtiszLQh"
+# Alias cleos with endpoint param to avoid repetition
+# We use as host here because that service name configured in docker-compose.yml
+cleos="cleos -u http://eosiodev:8888"
 
-EOSLOCAL_ACCOUNT_PRIVATE_ACTIVE_KEY="5Hy5kAujsv4fVWa9xv784Pgy4eLgrrDf3trP49J3FvDpKRfzaNn"
-EOSLOCAL_ACCOUNT_PUBLIC_ACTIVE_KEY="EOS8G66UbcXKfQ7unJES7BrKHggQMZfHUkTMkMF8nEbsktpjsb9tr"
+# Creates an eos account with 10.0000 EOS
+function create_eos_account () {
+  $cleos create account eoslocal $1 $2 $2
+  $cleos push action eosio.token issue '[ "'$1'", "10.0000 EOS", "initial stake" ]' -p eosio
+}
 
-# move into the executable directory
-cd $ROOT_DIR
+# Unlocks the default wallet and waits .5 seconds
+function unlock_wallet () {
+  echo "unlocking default wallet..."
+  $cleos wallet unlock --password $(cat $CONFIG_DIR/keys/default_wallet_password.txt)
+  sleep .5
+}
 
-echo "Creating wallet"
-wallet_password=$(cleos -u http://eosiodev:8888 wallet create --to-console | awk 'FNR > 3 { print $1 }' | tr -d '"')
-echo $wallet_password > "$CONFIG_DIR"/keys/default_wallet_password.txt
+function create_wallet () {
+  echo "Creating wallet"
+  WALLET_PASSWORD=$($cleos wallet create --to-console | awk 'FNR > 3 { print $1 }' | tr -d '"')
+  echo $WALLET_PASSWORD > "$CONFIG_DIR"/keys/default_wallet_password.txt
+  sleep .5
+}
 
-cleos -u http://eosiodev:8888 wallet open
+function import_private_key () {
+  $cleos wallet import --private-key $1
+}
 
-cleos -u http://eosiodev:8888 wallet list
+# initialize chain
+function initialize () {
+  # EOSIO keys
+  EOSIO_PVTKEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+  EOSIO_PUBKEY="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 
-cleos -u http://eosiodev:8888 wallet unlock -n default --password $wallet_password
+  # EOSLOCAL keys
+  EOSLOCAL_OWNER_PVTKEY="5KacG2v3XYrjmxazgriHVo1updD7PKXJMWzcaQmBMMXE9Y69aW9"
+  EOSLOCAL_OWNER_PUBKEY="EOS88bvtAMTwPBQyF8cxFUFXez9zCoebABS3dXngdNphqNtiszLQh"
 
-cleos -u http://eosiodev:8888 wallet list
+  EOSLOCAL_ACTIVE_PVTKEY="5Hy5kAujsv4fVWa9xv784Pgy4eLgrrDf3trP49J3FvDpKRfzaNn"
+  EOSLOCAL_ACTIVE_PUBKEY="EOS8G66UbcXKfQ7unJES7BrKHggQMZfHUkTMkMF8nEbsktpjsb9tr"
 
-echo "Importing keys"
+  echo "Importing eosio and eoslocal keys"
+  import_private_key $EOSIO_PVTKEY
+  import_private_key $EOSLOCAL_OWNER_PVTKEY
+  import_private_key $EOSLOCAL_ACTIVE_PVTKEY
+  sleep .5
 
-cleos -u http://eosiodev:8888 wallet import --private-key $EOSLOCAL_ACCOUNT_PRIVATE_OWNER_KEY
+  echo "Deploy bios and token..."
+  $cleos set contract eosio /contracts/eosio.bios -p eosio
+  $cleos create account eosio eosio.token $EOSIO_PUBKEY $EOSIO_PUBKEY
+  $cleos set contract eosio.token /contracts/eosio.token -p eosio.token
+  $cleos push action eosio.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p eosio.token
+  sleep .5
 
-cleos -u http://eosiodev:8888 wallet import --private-key $EOSLOCAL_ACCOUNT_PRIVATE_ACTIVE_KEY
+  echo "Creates eoslocal account with stake..."
+  $cleos create account eosio eoslocal $EOSLOCAL_OWNER_PUBKEY $EOSLOCAL_ACTIVE_PUBKEY
+  $cleos push action eosio.token issue '[ "'eoslocal'", "1000.0000 EOS", "initial stake" ]' -p eosio
+  sleep .5
+}
 
-cleos -u http://eosiodev:8888 wallet import --private-key $EOSIO_PRIVATE_KEY
+function create_testing_accounts () {
 
-echo "Creating demo accounts"
+  echo "Creating testing accounts"
 
-cleos -u http://eosiodev:8888 create account eosio bob $EOSLOCAL_ACCOUNT_PUBLIC_OWNER_KEY
+  USER_A_ACCOUNT="eoslocalusra"
+  USER_A_PVTKEY="5K4MHQN7sPdEURaxzjCnbynUwkEKRJzs8zVUf24ofaFiZNK815J"
+  USER_A_PUBKEY="EOS5k6Jht1epqZ2mnRLFVDXDTosaTneR6xFhvenVLiFfz5Ue125dL"
 
-cleos -u http://eosiodev:8888 create account eosio alice $EOSLOCAL_ACCOUNT_PUBLIC_OWNER_KEY
+  USER_B_ACCOUNT="eoslocalusrb"
+  USER_B_PVTKEY="5JHCQDi7jsbnQnWdyxteRjT2DdNZHePiEG1DTaPQQDDP2X6aor6"
+  USER_B_PUBKEY="EOS6TVQ6EmphCWavUuYiZMmDNYMRgbb96wgqWDncjrkvFPcpokgdD"
 
-echo "Compiling hello demo contract"
+  USER_C_ACCOUNT="eoslocalusrc"
+  USER_C_PVTKEY="5JXCt633pzYaUysn7exDHeVXwhwMjX2L231b37CdsSb7y1uvDH7"
+  USER_C_PUBKEY="EOS7CB47VMLWp49QhajE3uTuHuf9qoSeR6scUHMKGCD6LXYufRUDc"
 
-cd /opt/application/contracts/hello
+  USER_D_ACCOUNT="eoslocalusrd"
+  USER_D_PVTKEY="5JdRgeRBriBDdxb3r76sLJaQmwGgXkMU8GReTAmy8xYppMSAAoZ"
+  USER_D_PUBKEY="EOS6Jv4RykLZQQopCBdBHSwaGoMyFxyaxFNXimqFPdEXNWqgWbG1a"
 
-eosio-cpp -abigen hello.cpp -o hello.wasm
+  USER_E_ACCOUNT="eoslocalusre"
+  USER_E_PVTKEY="5Jdwjwto9wxy5ZNPnWSn965eb8ZtSrK1uRKUxhviLpr9gK79hmM"
+  USER_E_PUBKEY="EOS5VdFvRRTtVQAPUJZQCYvpBekYV4nc1cFe7og9aYPTBMXZ38Koy"
 
-echo "Compiling eoslocal demo contract"
+  import_private_key $USER_A_PVTKEY
+  import_private_key $USER_B_PVTKEY
+  import_private_key $USER_C_PVTKEY
+  import_private_key $USER_D_PVTKEY
+  import_private_key $USER_E_PVTKEY
 
-cd /opt/application/contracts/eoslocal
+  create_eos_account $USER_A_ACCOUNT $USER_A_PUBKEY
+  create_eos_account $USER_B_ACCOUNT $USER_B_PUBKEY
+  create_eos_account $USER_C_ACCOUNT $USER_C_PUBKEY
+  create_eos_account $USER_D_ACCOUNT $USER_D_PUBKEY
+  create_eos_account $USER_E_ACCOUNT $USER_E_PUBKEY
+}
 
-eosio-cpp -abigen eoslocal.cpp -o eoslocal.wasm
+# build and deploy eoslocal demo contract
+function build_and_deploy_contracts () {
+  echo "Compiling contract"
 
-# move into the executable directory
-cd $ROOT_DIR
+  cd /opt/application/contracts/eoslocal
 
-cleos -u http://eosiodev:8888 wallet keys
+  eosio-cpp -abigen eoslocal.cpp -o eoslocal.wasm
 
-cleos -u http://eosiodev:8888 create account eosio hello $EOSLOCAL_ACCOUNT_PUBLIC_OWNER_KEY -p eosio@active
+  echo "Deploying contract"
+  $cleos set contract eoslocal /opt/application/contracts/eoslocal -p eoslocal@active
 
-cleos -u http://eosiodev:8888 create account eosio eoslocal $EOSLOCAL_ACCOUNT_PUBLIC_OWNER_KEY -p eosio@active
+  echo "Verifying contract actions and user wallets work"
+  $cleos push action eoslocal greet '["1","eoslocalusra","Hello form USER A"]' -p eoslocalusra@active
+  $cleos push action eoslocal greet '["2","eoslocalusrb","Hola hola hola from USER B"]' -p eoslocalusrb@active
+}
 
-echo "Deploying demo contract"
+# setup chain, testing users and contracts
+until curl eosiodev:8888/v1/chain/get_info
+do
+  sleep 1s
+done
 
-cleos -u http://eosiodev:8888 set contract hello /opt/application/contracts/hello -p hello@active
+create_wallet
+initialize
+create_testing_accounts
+build_and_deploy_contracts
 
-cleos -u http://eosiodev:8888 set contract eoslocal /opt/application/contracts/eoslocal -p eoslocal@active
-
-echo "Testing contract"
-
-cleos -u http://eosiodev:8888 push action hello hi '["bob"]' -p bob@active
-cleos -u http://eosiodev:8888 push action eoslocal greet '["bob"]' -p bob@active
+# debugging code
+echo 'Wallet info:'
+$cleos wallet list
+find / -type f -name "*.wallet"

@@ -22,6 +22,22 @@ services:
         aliases:
           - postgres.eoslocal.io
 
+  pgweb:
+    image: sosedoff/pgweb:latest
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://user:pass@postgres:5432/eoslocal?sslmode=disable
+      VIRTUAL_HOST: pgweb.eoslocal.io
+      VIRTUAL_PORT: 8081
+    depends_on:
+      - postgres
+    networks:
+      eoslocal:
+        aliases:
+          - pgweb.eoslocal.io
+
   flyway:
     image: boxfuse/flyway:5.2.1
     command: -url=jdbc:postgresql://postgres:5432/eoslocal -user=user -password=pass -connectRetries=60 migrate
@@ -47,6 +63,27 @@ services:
         aliases:
           - mongo.eoslocal.io
 
+
+  admin-mongo:
+    image: mrvautin/adminmongo:latest
+    restart: "always"
+    ports:
+      - '8082:8082'
+    environment:
+      PORT: 8082
+      CONN_NAME: fullnode
+      DB_HOST: mongo.eoslocal.io
+      DB_PORT: 27017
+      VIRTUAL_HOST: admin-mongo.eoslocal.io
+      VIRTUAL_PORT: 8082
+    depends_on:
+      - mongo
+      - fullnode
+    networks:
+      eoslocal:
+        aliases:
+          - admin-mongo.eoslocal.io
+
   fullnode:
     build:
       context: ./services/eos-fullnode
@@ -68,8 +105,6 @@ services:
     volumes:
       - 'fullnode:/opt/eosio/bin/data-dir'
       - './services/eos-fullnode/config.ini:/opt/eosio/bin/data-dir/config.ini'
-      # - './services/eos-fullnode/config-main-node.ini:/opt/eosio/bin/data-dir/config.ini'
-      # - './services/eos-fullnode/mainnet-genesis.json:/opt/eosio/bin/genesis.json'
     networks:
       eoslocal:
         aliases:
@@ -86,12 +121,12 @@ services:
       - '8888:8888'
       - '9830:9876'
     environment:
-      DATA_DIR: /root/.local/share
+      DATA_DIR: /root/data-dir
       CONFIG_DIR: /opt/application/config
       VIRTUAL_HOST: eosiodev.eoslocal.io
       VIRTUAL_PORT: 8888
     volumes:
-      - eosiodev:/root/.local/share
+      - eosiodev:/root/data-dir
       - ./services/eos-dev:/opt/application
     networks:
       eoslocal:
@@ -133,23 +168,6 @@ services:
       eoslocal:
         aliases:
           - demux.eoslocal.io
-
-  admin-mongo:
-    image: mrvautin/adminmongo:latest
-    ports:
-      - '8082:8082'
-    environment:
-      PORT: 8082
-      CONN_NAME: fullnode-mongo
-      DB_HOST: mongo
-      VIRTUAL_HOST: admin-mongo.eoslocal.io
-      VIRTUAL_PORT: 8082
-    depends_on:
-      - mongo
-    networks:
-      eoslocal:
-        aliases:
-          - admin-mongo.eoslocal.io
 
   # nginx reverse proxy that allows accesing the services directly on the host machine
   # the wildcard *.esolocal.io that points to 127.0.0.1,

@@ -22,13 +22,24 @@
 
 # EOS Local 
 
-The quickest and most efficient way to setup and maintain a local environment for development that is guaranteed to work out-of-the-box across the different host operating systems: Mac OS, Windows, and Linux.
+EOS Local provides a really quick way to setup and maintain a local development environment for EOS dApps. It is a docker based dev environment that is guaranteed to work out-of-the-box across the different host operating systems: Mac OS, Windows, and Linux.
 
-It is a reusable docker based development environment inspired on MonsterEOS' EOSIO DreamStack architecture that will allow you to develop EOS applications faster.
+This project was inspired on MonsterEOS' **EOSIO Dream Stack** architecture that will allow you to develop EOS applications faster and easily scale as necessary.
 
-EOS Local is a community-driven project led by EOS Costa Rica. We welcome contributions of all sorts. There are many ways to help, from reporting issues, proposing features, improving documentation, contributing code, design/ux proposals.
+EOS Local is a community-driven project led by EOS Costa Rica. We welcome contributions of all sorts. There are many ways to help, from reporting issues, proposing features, improving documentation, contributing code, design/ux proposals, etc.
 
-**Important Disclaimer: This is a Work in Progress** 
+<p align="center">
+	<img src="assets/eoslocal-bitmapoverWhte.png" width="600">
+</p>
+
+<p align="center">
+	Watch the EOS Local Introductory Video on YouTube
+</p>
+<p align="center">
+  <a target="_blank" href="https://www.youtube.com/watch?v=wFk2RsT8IAk">
+	  <img src="assets/intro-video.png" width="600">
+  </a>
+</p>
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -42,6 +53,7 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
 - [Commands](#commands)
 - [Chain Initialization and Database Migrations](#chain-initialization-and-database-migrations)
 - [Directory Structure](#directory-structure)
+- [Designing and Developing EOS Smart Contracts](#designing-and-developing-eos-smart-contracts)
 - [Services](#services)
   - [demux](#demux)
   - [graphql](#graphql)
@@ -51,7 +63,9 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
   - [fullnode](#fullnode)
   - [postgres](#postgres)
   - [flyway](#flyway)
+  - [pgweb](#pgweb)
   - [mongodb](#mongodb)
+  - [admin-mongo](#admin-mongo)
   - [ngnix-proxy](#ngnix-proxy)
   - [reactjs web client](#reactjs-web-client)
     - [components](#components)
@@ -68,6 +82,7 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
   - [Who is using EOS Local ?](#who-is-using-eos-local-)
 - [Contributing](#contributing)
 - [Awesome Lists](#awesome-lists)
+- [Support](#support)
 - [About EOS Costa Rica](#about-eos-costa-rica)
 - [License](#license)
 - [Contributors](#contributors)
@@ -83,7 +98,7 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
 ## Advantages
 
 - Get started with EOS DApp development in less than 5 minutes with a single command.
-- Focus on your biz logic, not on configurations or integrating commonly used third party-services.
+- Focus on your features, not on configurations or integrating commonly used third party-services.
 - Scalable microservices architecture. 
 - Deploy your dApp dedicated services easily to any infrastructure provider with containers.  
 - Ability to run multiple versions of EOS with different configuration with no conflicts.
@@ -94,16 +109,18 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
 - Fully virtualized EOS blockchain development environment.
 - Microservices architecture.
 - Out-of-box services: 
-  - Postgres database.
-  - Mongodb database.
+  - EOS node with everything contract development and compilation.
+  - EOS fullnode with history.
   - Demux service.
+  - GraphQL endpoint with GraphiQL.
+  - Postgres database.
+  - MongoDB database.
+  - Admin Mongo instance.
+  - PGWeb instance.
   - Flyway service for Postgres DB migrations.
-  - Eos-dev node for contract dev and compilation.
-  - Eos fullnode with history.
-  - Graphql endpoint.
   - Reactjs client with:
-    - Scatter integration.
-    - Lynx integration.
+    - Scatter integration. 
+    - Lynx integration. WIP [#21](https://github.com/eoscostarica/eos-local/issues/21)
     - EOS Account profile page.
     - Material UI.
     - GraphQL Apollo client.
@@ -116,6 +133,8 @@ EOS Local is a community-driven project led by EOS Costa Rica. We welcome contri
 - Kubernetes support ( coming soon https://github.com/eoscostarica/eos-local/issues/8 )
 
 *Note: at the moment we are not using a docker container for running the React client due to issues related to hot reloading the app efficiently*
+
+**Important Disclaimer: This is a Work in Progress** 
 
 ## Getting started
 
@@ -133,7 +152,7 @@ At least 10GB RAM (Docker -> Preferences -> Advanced -> Memory -> 10GB or above)
 
 **NPM packages**
 
-- run `yarn` on the root directoty to install node packages required by `gulp-cli`
+- run `yarn` on the root directory to install node packages required by `gulp-cli`
 
 ## Commands
 
@@ -260,6 +279,10 @@ Know exactly what data you can request from your API without leaving your editor
 
 The GraphiQL instance on EOS Local is available at http://localhost:3030/graphiql
 
+<p align="center">
+	<img src="assets/graphiql.png" width="600">
+</p>
+
 Learn more at https://graphql.org & https://www.howtographql.com
 
 #### PostGraphile 
@@ -323,6 +346,16 @@ EOS Local leverages Flyway to manage the Postgres database migrations.
 
 Learn more at https://flywaydb.org/documentation/migrations & https://flywaydb.org/documentation/videos
 
+### pgweb
+
+Pgweb is a web-based database browser for PostgreSQL, written in Go and works on OSX, Linux and Windows machines. Main idea behind using Go for backend development is to utilize ability of the compiler to produce zero-dependency binaries for multiple platforms. Pgweb was created as an attempt to build very simple and portable application to work with local or remote PostgreSQL databases.
+
+<p align="center">
+	<img src="assets/graphiql.png" width="600">
+</p>
+
+Docker compose exposes a pgweb instance on https://localhost:8081 and also through http://pgweb.eoslocal.io with the nginx reverse-proxy.
+
 ### mongodb
 
 MongoDB instance for the fullnode. 
@@ -330,6 +363,20 @@ MongoDB instance for the fullnode.
 The eosio::mongo_db_plugin provides archiving of blockchain data into a MongoDB. It is recommended that the plugin be added to a non-producing node as it is designed to shut down on any failed insert into the MongoDB and is resource intensive.
 
 https://developers.eos.io/eosio-nodeos/docs/mongo_db_plugin
+
+### admin-mongo
+
+AdminMongo is a Web based user interface (GUI) to handle all your MongoDB connections/databases needs. adminMongo is fully responsive and should work on a range of devices.
+
+Out-of-the-box it is connected to the fullnode mongodb instance and allows you to explore transactions and other data in that database. Docker compose exposes it on https://localhost:8082 and also through http://admin-mongo.eoslocal.io with the nginx reverse-proxy.
+
+<p align="center">
+	<img src="assets/admin-mongo.png" width="600">
+</p>
+
+_adminMongo connection information (including username/password) is stored unencrypted in a config file, it is not recommended to run this application on a production or public facing server without proper security considerations._
+
+Learn more https://mrvautin.com/adminmongo/
 
 ### ngnix-proxy
 
@@ -344,6 +391,10 @@ See the `docker-compose.yml` for available virtual hosts for easier access witho
 ### reactjs web client
 
 In the services/frontend folder you will find a production ready frontend with Scatter and Lynx libraries ready for you to use. 
+
+<p align="center">
+	<img src="assets/react-client.png" width="600">
+</p>
 
 #### components
 
@@ -483,6 +534,10 @@ Learn more at https://dev.to/pesse/one-does-not-simply-update-a-database--migrat
 
 We use a Kanban-style board. That's were we prioritize the work. [Go to Project Board](https://github.com/eoscostarica/eos-local/projects/3).
 
+<p align="center">
+	<img src="assets/project-board.png" width="600">
+</p>
+
 The main communication channels are [github issues](https://github.com/eoscostarica/eos-local/issues) and [EOS Costa Rica's Discord server](https://eoscostarica.io/discord). Feel to join and ask as many questions you may have.
 
 Our weekly sync call is every Monday 1:00 AM UTC. [meet.eoscostarica.io](https:/meet.eoscostarica.io).
@@ -495,12 +550,17 @@ Please report bugs big and small by [opening an issue](https://github.com/eoscos
 
 - https://github.com/EOS-Nation/Awesome-EOS
 - https://github.com/DanailMinchev/awesome-eosio
+- https://github.com/kesar/eos-awesome-contracts/
 - https://github.com/veggiemonk/awesome-docker
 - https://github.com/dhamaniasad/awesome-postgres
 - https://github.com/ramnes/awesome-mongodb
 - https://github.com/enaqx/awesome-react
 - https://github.com/jaredpalmer/awesome-react-render-props
 - https://github.com/chentsulin/awesome-graphql
+
+## Support
+
+Contact the team directly on the #eos-local channel on [EOS Costa Rica's Discord server](https://eoscostarica.io/discord), we will assist you as soon as possible.
 
 ## About EOS Costa Rica
 
@@ -522,7 +582,7 @@ MIT © [EOS Costa Rica](https://eoscostarica.io)
 <!-- prettier-ignore -->
 | [<img src="https://avatars0.githubusercontent.com/u/391270?v=4" width="100px;"/><br /><sub><b>Gabo Esquivel</b></sub>](https://gaboesquivel.com)<br />[🤔](#ideas-gaboesquivel "Ideas, Planning, & Feedback") [📖](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=gaboesquivel "Documentation") [💻](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=gaboesquivel "Code") [👀](#review-gaboesquivel "Reviewed Pull Requests") | [<img src="https://avatars2.githubusercontent.com/u/349542?v=4" width="100px;"/><br /><sub><b>Daniel Prado</b></sub>](https://github.com/danazkari)<br />[💻](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=danazkari "Code") [📖](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=danazkari "Documentation") [🤔](#ideas-danazkari "Ideas, Planning, & Feedback") [👀](#review-danazkari "Reviewed Pull Requests") | [<img src="https://avatars1.githubusercontent.com/u/1179619?v=4" width="100px;"/><br /><sub><b>Jorge Murillo</b></sub>](https://github.com/murillojorge)<br />[🤔](#ideas-murillojorge "Ideas, Planning, & Feedback") [📖](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=murillojorge "Documentation") [🎨](#design-murillojorge "Design") [💻](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=murillojorge "Code") [👀](#review-murillojorge "Reviewed Pull Requests") | [<img src="https://avatars0.githubusercontent.com/u/5632966?v=4" width="100px;"/><br /><sub><b>Xavier Fernandez</b></sub>](https://github.com/xavier506)<br />[🤔](#ideas-xavier506 "Ideas, Planning, & Feedback") [📝](#blog-xavier506 "Blogposts") [📢](#talk-xavier506 "Talks") [🚇](#infra-xavier506 "Infrastructure (Hosting, Build-Tools, etc)") | [<img src="https://avatars2.githubusercontent.com/u/13205620?v=4" width="100px;"/><br /><sub><b>Rubén Abarca Navarro</b></sub>](https://github.com/rubenabix)<br />[🤔](#ideas-rubenabix "Ideas, Planning, & Feedback") [👀](#review-rubenabix "Reviewed Pull Requests") [💻](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=rubenabix "Code") | [<img src="https://avatars2.githubusercontent.com/u/15035769?v=4" width="100px;"/><br /><sub><b>jsegura17</b></sub>](https://github.com/jsegura17)<br />[💻](https://github.com/eoscostarica/eos-dapp-dev-env/commits?author=jsegura17 "Code") [👀](#review-jsegura17 "Reviewed Pull Requests") [🤔](#ideas-jsegura17 "Ideas, Planning, & Feedback") | [<img src="https://avatars1.githubusercontent.com/u/6147142?v=4" width="100px;"/><br /><sub><b>Leo Ribeiro</b></sub>](http://leordev.github.io)<br />[🤔](#ideas-leordev "Ideas, Planning, & Feedback") [👀](#review-leordev "Reviewed Pull Requests") |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| [<img src="https://avatars2.githubusercontent.com/u/16544451?v=4" width="100px;"/><br /><sub><b>Mariano Alvarez</b></sub>](https://github.com/mahcr)<br />[🤔](#ideas-mahcr "Ideas, Planning, & Feedback") [👀](#review-mahcr "Reviewed Pull Requests") | [<img src="https://avatars1.githubusercontent.com/u/1082127?v=4" width="100px;"/><br /><sub><b>Julien Lucca</b></sub>](http://lucca65.github.io)<br />[👀](#review-lucca65 "Reviewed Pull Requests") [🤔](#ideas-lucca65 "Ideas, Planning, & Feedback") | [<img src="https://avatars2.githubusercontent.com/u/40245170?v=4" width="100px;"/><br /><sub><b>Edgar Fernandez</b></sub>](http://www.eoscostarica.io)<br />[🤔](#ideas-edgar-eoscostarica "Ideas, Planning, & Feedback") [📝](#blog-edgar-eoscostarica "Blogposts") [📢](#talk-edgar-eoscostarica "Talks") |
+| [<img src="https://avatars2.githubusercontent.com/u/16544451?v=4" width="100px;"/><br /><sub><b>Mariano Alvarez</b></sub>](https://github.com/mahcr)<br />[🤔](#ideas-mahcr "Ideas, Planning, & Feedback") [👀](#review-mahcr "Reviewed Pull Requests") | [<img src="https://avatars1.githubusercontent.com/u/1082127?v=4" width="100px;"/><br /><sub><b>Julien Lucca</b></sub>](http://lucca65.github.io)<br />[👀](#review-lucca65 "Reviewed Pull Requests") [🤔](#ideas-lucca65 "Ideas, Planning, & Feedback") | [<img src="https://avatars2.githubusercontent.com/u/40245170?v=4" width="100px;"/><br /><sub><b>Edgar Fernandez</b></sub>](http://www.eoscostarica.io)<br />[🤔](#ideas-edgar-eoscostarica "Ideas, Planning, & Feedback") [📝](#blog-edgar-eoscostarica "Blogposts") [📢](#talk-edgar-eoscostarica "Talks") | [<img src="https://avatars3.githubusercontent.com/u/1288106?v=4" width="100px;"/><br /><sub><b>César Rodríguez</b></sub>](http://www.kesarito.com)<br />[🤔](#ideas-kesar "Ideas, Planning, & Feedback") |
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 Thanks goes to these wonderful people ([emoji key](https://github.com/kentcdodds/all-contributors#emoji-key)):
 
